@@ -91,6 +91,17 @@ LineLoop:
 			continue LineLoop
 		}
 
+		// AD-12973: temporary hacks
+		// skip all metrics that are too long
+		nameLen := len(name)
+		if nameLen > 1000 {
+			continue LineLoop
+		}
+		// skip all metrics that do not begin with a letter
+		if nameLen > 0 && !byteIsASCIILetter(name[0]) {
+			continue LineLoop
+		}
+
 		m, err := urlParse(unsafeString(name))
 		if err != nil {
 			continue
@@ -136,4 +147,14 @@ LineLoop:
 	}
 
 	return newTagged, nil
+}
+
+func byteIsASCIILetter(b byte) bool {
+	const (
+		uppercaseA = 65
+		uppercaseZ = 90
+		lowercaseA = 97
+		lowercaseZ = 122
+	)
+	return ((uppercaseA <= b) && (b <= uppercaseZ)) || ((lowercaseA <= b) && (b <= lowercaseZ))
 }
