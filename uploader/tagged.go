@@ -19,8 +19,10 @@ type Tagged struct {
 	ignoredMetrics map[string]bool
 }
 
-var _ Uploader = &Tagged{}
-var _ UploaderWithReset = &Tagged{}
+var (
+	_ Uploader          = &Tagged{}
+	_ UploaderWithReset = &Tagged{}
+)
 
 func NewTagged(base *Base) *Tagged {
 	u := &Tagged{}
@@ -119,7 +121,7 @@ LineLoop:
 		tagsBuf.Reset()
 		tag1 = tag1[:0]
 
-		t := fmt.Sprintf("__name__=%s", m.Path)
+		t := fmt.Sprintf("%s=%s", "__name__", m.Path)
 		tag1 = append(tag1, t)
 		tagsBuf.WriteString(t)
 
@@ -138,9 +140,8 @@ LineLoop:
 		}
 
 		for i := 0; i < len(tag1); i++ {
-			// temporary
-			if tag1[i] != "__name__" && u.ignoredMetrics["*"] {
-				u.logger.Error("tag1 contains ignored tag", zap.String("tag", tag1[i]))
+			if !strings.HasPrefix(tag1[i], "__name__") && u.ignoredMetrics["*"] {
+				u.logger.Warn("tag1 contains ignored tag", zap.String("tag", tag1[i]))
 			}
 			wb.WriteUint16(reader.Days())
 			wb.WriteString(tag1[i])
