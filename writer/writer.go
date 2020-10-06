@@ -156,7 +156,7 @@ func (w *Writer) worker(ctx context.Context) {
 					return
 				}
 
-				err = w.onFinish(filename)
+				err := w.onFinish(filename)
 				if err != nil {
 					w.logger.Error("onFinish callback failed", zap.String("filename", filename), zap.Error(err))
 				}

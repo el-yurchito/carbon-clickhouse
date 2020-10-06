@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lomik/zapwriter"
+	"go.uber.org/zap"
+
 	"github.com/lomik/carbon-clickhouse/helper/RowBinary"
 )
 
@@ -91,6 +94,20 @@ LineLoop:
 			continue LineLoop
 		}
 
+		// AD-12973: temporary hacks
+		// skip all metrics that are too long
+		malformedLogger := zapwriter.Logger("upload-malformed")
+		nameLen := len(name)
+		if nameLen > 1000 {
+			malformedLogger.Warn("name too long, skipping", zap.Binary("name", name))
+			continue LineLoop
+		}
+		// skip all metrics that do not begin with a letter
+		if nameLen > 0 && !byteIsASCIILetter(name[0]) {
+			malformedLogger.Warn("name starts with wrong char, skipping", zap.Binary("name", name))
+			continue LineLoop
+		}
+
 		m, err := urlParse(unsafeString(name))
 		if err != nil {
 			continue
@@ -121,6 +138,10 @@ LineLoop:
 		}
 
 		for i := 0; i < len(tag1); i++ {
+			// temporary
+			if tag1[i] != "__name__" && u.ignoredMetrics["*"] {
+				u.logger.Error("tag1 contains ignored tag", zap.String("tag", tag1[i]))
+			}
 			wb.WriteUint16(reader.Days())
 			wb.WriteString(tag1[i])
 			wb.WriteBytes(name)
@@ -136,4 +157,14 @@ LineLoop:
 	}
 
 	return newTagged, nil
+}
+
+func byteIsASCIILetter(b byte) bool {
+	const (
+		uppercaseA = 65
+		uppercaseZ = 90
+		lowercaseA = 97
+		lowercaseZ = 122
+	)
+	return ((uppercaseA <= b) && (b <= uppercaseZ)) || ((lowercaseA <= b) && (b <= lowercaseZ))
 }
