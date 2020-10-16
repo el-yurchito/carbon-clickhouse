@@ -48,13 +48,18 @@ ORDER BY (Level, Path, Date);
 -- optional table for storing Graphite tags
 CREATE TABLE graphite_tagged (
   Date Date,
-  Tag1 String,
+  Name String,
   Path String,
   Tags Array(String),
-  Version UInt32
+  Version UInt32,
+  -- optional columns for keeping specific tags, it is important that they go after Version column
+  -- see also upload.graphite_tagged.dedicated-tags
+  OptCol1 String,
+  OptCol2 String
+  -- ...
 ) ENGINE = ReplacingMergeTree(Version)
 PARTITION BY toYYYYMM(Date)
-ORDER BY (Tag1, Path, Date);
+ORDER BY (Name, Path, Date);
 ```
 
 [GraphiteMergeTree documentation](https://clickhouse.yandex/docs/en/table_engines/graphitemergetree.html)
@@ -145,8 +150,8 @@ cache-ttl = "12h0m0s"
 # ]
 
 # # Extra table which can be used as index for tagged series
-# # Also, there is an opportunity to avoid writing tags for some metrics.
-# # Example below, ignored-tagged-metrics.
+# # There is an opportunity to avoid writing tags for some metrics (ignored-tagged-metrics).
+# # It is also available to store specific tags in columns which are dedicated for these tags (dedicated-tags).
 # [upload.graphite_tagged]
 # type = "tagged"
 # table = "graphite_tagged"
@@ -158,6 +163,16 @@ cache-ttl = "12h0m0s"
 #     "a.b.c.d",  # all tags (but __name__) will be ignored for metrics like a.b.c.d?tagName1=tagValue1&tagName2=tagValue2...
 #     "*",  # all tags (but __name__) will be ignored for all metrics; this is the only special case with wildcards
 # ]
+
+# # Tag with name ded-tag1 will be stored in column OptCol1; name ded-tag2 goes to column OptCol2.
+# # It is important that columns in this config are placed in exactly 
+# # the same order as they are defined at tagged table DDL!
+# [[upload.graphite_tagged.dedicated-tags]]
+# name = "ded-tag1"
+# col = "OptCol1"
+# [[upload.graphite_tagged.dedicated-tags]]
+# name = "ded-tag2"
+# col = "OptCol2"
 
 [udp]
 listen = ":2003"
