@@ -19,6 +19,12 @@ type Config struct {
 	IgnoredPatterns      []string         `toml:"ignored-patterns,omitempty"` // points, points-reverse
 	CompressData         bool             `toml:"compress-data"`              //compress data while sending to clickhouse
 	IgnoredTaggedMetrics []string         `toml:"ignored-tagged-metrics"`     // for tagged table; create only `__name__` tag for these metrics and ignore others
+	DedicatedTags        []DedicatedTag   `toml:"dedicated-tags"`             // these tags will be moved from common Array(String) column to their dedicated columns
+}
+
+type DedicatedTag struct {
+	Name   string `toml:"name"`
+	Column string `toml:"col"`
 }
 
 func (cfg *Config) Parse() error {
