@@ -143,8 +143,8 @@ LineLoop:
 		tagsList = tagsList[:0]
 		extraValues = make(map[string]string)
 
+		tagsList = append(tagsList, m.Path) // unlike other tags, only value of __name__ tag is written
 		t := fmt.Sprintf("%s=%s", "__name__", m.Path)
-		tagsList = append(tagsList, t)
 		tagsBuf.WriteString(t)
 
 		// don't upload any other tag but __name__
