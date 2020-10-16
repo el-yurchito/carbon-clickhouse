@@ -150,8 +150,7 @@ cache-ttl = "12h0m0s"
 # ]
 
 # # Extra table which can be used as index for tagged series
-# # There is an opportunity to avoid writing tags for some metrics (ignored-tagged-metrics).
-# # It is also available to store specific tags in columns which are dedicated for these tags (dedicated-tags).
+# # It is possible to store specific tags in columns which are dedicated for these tags (dedicated-tags).
 # [upload.graphite_tagged]
 # type = "tagged"
 # table = "graphite_tagged"
@@ -159,10 +158,6 @@ cache-ttl = "12h0m0s"
 # url = "http://localhost:8123/"
 # timeout = "1m0s"
 # cache-ttl = "12h0m0s"
-# ignored-tagged-metrics = [
-#     "a.b.c.d",  # all tags (but __name__) will be ignored for metrics like a.b.c.d?tagName1=tagValue1&tagName2=tagValue2...
-#     "*",  # all tags (but __name__) will be ignored for all metrics; this is the only special case with wildcards
-# ]
 
 # # Tag with name ded-tag1 will be stored in column OptCol1; name ded-tag2 goes to column OptCol2.
 # # It is important that columns in this config are placed in exactly 

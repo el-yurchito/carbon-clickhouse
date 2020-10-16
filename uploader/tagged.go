@@ -16,9 +16,8 @@ import (
 type Tagged struct {
 	*cached
 
-	ignoredMetrics map[string]bool
-	routeTags      map[string]string // tag name to column name
-	extraColumns   []string          // names of columns which follow after Version column
+	extraColumns []string          // names of columns which follow after Version column
+	routeTags    map[string]string // tag name to column name
 }
 
 var (
@@ -48,11 +47,6 @@ func NewTagged(base *Base) *Tagged {
 	query.WriteString(")")
 	u.query = query.String()
 
-	u.ignoredMetrics = make(map[string]bool, len(u.config.IgnoredTaggedMetrics))
-	for _, metric := range u.config.IgnoredTaggedMetrics {
-		u.ignoredMetrics[metric] = true
-	}
-
 	return u
 }
 
@@ -81,6 +75,7 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (map[string]bool, err
 	}
 	defer reader.Close()
 
+	extraValues := make(map[string]string)
 	newTagged := make(map[string]bool)
 	version := uint32(time.Now().Unix())
 
@@ -89,11 +84,6 @@ func (u *Tagged) parseFile(filename string, out io.Writer) (map[string]bool, err
 
 	tagsBuf := RowBinary.GetWriteBuffer()
 	defer tagsBuf.Release()
-
-	var (
-		extraValues map[string]string
-		tagsList    []string
-	)
 
 LineLoop:
 	for {
@@ -140,16 +130,8 @@ LineLoop:
 
 		wb.Reset()
 		tagsBuf.Reset()
-		tagsList = tagsList[:0]
 		extraValues = make(map[string]string)
 
-		tagsList = append(tagsList, m.Path) // unlike other tags, only value of __name__ tag is written
-		t := fmt.Sprintf("%s=%s", "__name__", m.Path)
-		tagsBuf.WriteString(t)
-
-		// don't upload any other tag but __name__
-		// if either main metric (m.Path) or each metric (*) is ignored
-		ignoreAllButName := u.ignoredMetrics[m.Path] || u.ignoredMetrics["*"]
 		tagsWritten := 1
 		for name, values := range m.Query() {
 			if column, ok := u.routeTags[name]; ok {
@@ -157,30 +139,22 @@ LineLoop:
 				continue
 			}
 
-			t := fmt.Sprintf("%s=%s", name, values[0])
-			tagsBuf.WriteString(t)
+			tagsBuf.WriteString(fmt.Sprintf("%s=%s", name, values[0]))
 			tagsWritten++
-
-			if !ignoreAllButName {
-				tagsList = append(tagsList, t)
-			}
 		}
 
-		for i := 0; i < len(tagsList); i++ {
-			// base columns set
-			wb.WriteUint16(reader.Days())
-			wb.WriteString(tagsList[i])
-			wb.WriteBytes(name)
-			wb.WriteUVarint(uint64(tagsWritten))
-			wb.Write(tagsBuf.Bytes())
-			wb.WriteUint32(version)
+		// base columns set
+		wb.WriteUint16(reader.Days())
+		wb.WriteString(m.Path) // m.Path is name part of the metric; it corresponds to the Name column
+		wb.WriteBytes(name)    // name is pristine metric; it corresponds to the Path column
+		wb.WriteUVarint(uint64(tagsWritten))
+		wb.Write(tagsBuf.Bytes())
+		wb.WriteUint32(version)
 
-			// extra columns
-			for _, column := range u.extraColumns {
-				wb.WriteString(extraValues[column])
-			}
+		// extra columns
+		for _, column := range u.extraColumns {
+			wb.WriteString(extraValues[column])
 		}
-
 		_, err = out.Write(wb.Bytes())
 		if err != nil {
 			return nil, err
